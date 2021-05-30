@@ -20,7 +20,7 @@ impl TryFrom<[u8; 4]> for ChunkType {
 
         for (index, v) in value.iter().enumerate() {
             if v.is_ascii() {
-                chunk_type.chunk_name[index] = *v;
+                chunk_type.chunk_name[index] =  *v;
             }
         }
 
@@ -36,8 +36,10 @@ impl FromStr for ChunkType {
         let mut chunk_type = ChunkType { chunk_name: [0; 4] };
 
         for (index, character) in s.chars().enumerate() {
-            if character.is_ascii() {
+            if character.is_ascii_lowercase() || character.is_ascii_uppercase() {
                 chunk_type.chunk_name[index] = character as u8;
+            } else {
+                return Err("Could not parse");
             }
         }
 
@@ -48,7 +50,7 @@ impl FromStr for ChunkType {
 // Display formats value using a given formatter
 impl Display for ChunkType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}, {}, {}", self.chunk_name[0], self.chunk_name[1], self.chunk_name[2], self.chunk_name[3])
+        write!(f, "{}", std::str::from_utf8(&self.chunk_name).unwrap())
     }
 }
 
@@ -60,6 +62,7 @@ impl ChunkType {
     fn is_valid(&self) -> bool {
         self.is_reserved_bit_valid() && self.chunk_name[0].is_ascii() &&
                                         self.chunk_name[1].is_ascii() &&
+                                        self.chunk_name[1].is_ascii() &&
                                         self.chunk_name[3].is_ascii()
     }
 
@@ -67,24 +70,24 @@ impl ChunkType {
         // chunks that are not strictly necessary to the display the content of the file
         // is a "ancillary" chunk
         // chunks that are necessary to the display the contents of the file is a "critical" chunk
-        self.chunk_name[0] >> 7 == 0 && self.chunk_name[0].is_ascii_uppercase()
+        self.chunk_name[0].is_ascii_uppercase()
     }
 
     fn is_public(&self) -> bool {
         // public chunk is one that is part of the PNG specification
         // private chunk is our own defined chunk for our own purpose
-        self.chunk_name[1] >> 7 == 0 && self.chunk_name[1].is_ascii_uppercase()
+        self.chunk_name[1].is_ascii_uppercase()
     }
 
     fn is_reserved_bit_valid(&self) -> bool {
         // must be 0 in files conforming to the 1.2 version of the PNG spec
-        self.chunk_name[2] >> 7 == 0 && self.chunk_name[2].is_ascii_uppercase()
+        self.chunk_name[2].is_ascii_uppercase()
     }
 
     fn is_safe_to_copy(&self) -> bool {
         // if chunk's safe-to-copy bit is 1, chunk may be copied to a modifed PNG file
         // if chunk's safe-to-copy bit is 0, the chunk depend on the image data
-        self.chunk_name[3] >> 7 == 1 && self.chunk_name[3].is_ascii_lowercase()
+        self.chunk_name[3].is_ascii_lowercase()
     }
 }
 
