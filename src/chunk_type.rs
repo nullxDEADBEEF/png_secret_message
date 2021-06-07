@@ -1,4 +1,6 @@
-use std::{convert::TryFrom, fmt::Display, fmt, str::FromStr};
+use std::convert::TryFrom;
+use std::fmt;
+use std::str;
 
 // Png consists of a PNG signature followed by chunks
 
@@ -6,9 +8,50 @@ use std::{convert::TryFrom, fmt::Display, fmt, str::FromStr};
 // - Each chunk has a type, represented by as a 4 character string
 
 // http://www.libpng.org/pub/png/spec/1.2/PNG-Structure.html
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub struct ChunkType {
-    chunk_name: [u8; 4],
+    pub name: [u8; 4],
+}
+
+impl ChunkType {
+    fn new(name: [u8; 4]) -> Self {
+        Self { name }
+    }
+
+    fn bytes(&self) -> [u8; 4] {
+        self.name
+    }
+
+    fn is_valid(&self) -> bool {
+        self.is_reserved_bit_valid()
+            && self.name[0].is_ascii()
+            && self.name[1].is_ascii()
+            && self.name[3].is_ascii()
+    }
+
+    fn is_critical(&self) -> bool {
+        // chunks that are not strictly necessary to the display the content of the file
+        // is a "ancillary" chunk
+        // chunks that are necessary to the display the contents of the file is a "critical" chunk
+        self.name[0].is_ascii_uppercase()
+    }
+
+    fn is_public(&self) -> bool {
+        // public chunk is one that is part of the PNG specification
+        // private chunk is our own defined chunk for our own purpose
+        self.name[1].is_ascii_uppercase()
+    }
+
+    fn is_reserved_bit_valid(&self) -> bool {
+        // must be 0 in files conforming to the 1.2 version of the PNG spec
+        self.name[2].is_ascii_uppercase()
+    }
+
+    fn is_safe_to_copy(&self) -> bool {
+        // if chunk's safe-to-copy bit is 1, chunk may be copied to a modifed PNG file
+        // if chunk's safe-to-copy bit is 0, the chunk depend on the image data
+        self.name[3].is_ascii_lowercase()
+    }
 }
 
 // TryFrom does simple and safe type conversions.
@@ -16,11 +59,11 @@ impl TryFrom<[u8; 4]> for ChunkType {
     type Error = &'static str;
 
     fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
-        let mut chunk_type = ChunkType { chunk_name: [0; 4] };
+        let mut chunk_type = ChunkType { name: [0; 4] };
 
         for (index, v) in value.iter().enumerate() {
             if v.is_ascii() {
-                chunk_type.chunk_name[index] =  *v;
+                chunk_type.name[index] = *v;
             }
         }
 
@@ -29,15 +72,15 @@ impl TryFrom<[u8; 4]> for ChunkType {
 }
 
 // FromStr does parsing of a value through a string
-impl FromStr for ChunkType {
+impl str::FromStr for ChunkType {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut chunk_type = ChunkType { chunk_name: [0; 4] };
+        let mut chunk_type = ChunkType::new([0; 4]);
 
         for (index, character) in s.chars().enumerate() {
             if character.is_ascii_lowercase() || character.is_ascii_uppercase() {
-                chunk_type.chunk_name[index] = character as u8;
+                chunk_type.name[index] = character as u8;
             } else {
                 return Err("Could not parse");
             }
@@ -48,49 +91,11 @@ impl FromStr for ChunkType {
 }
 
 // Display formats value using a given formatter
-impl Display for ChunkType {
+impl fmt::Display for ChunkType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", std::str::from_utf8(&self.chunk_name).unwrap())
+        write!(f, "{}", std::str::from_utf8(&self.name).unwrap())
     }
 }
-
-impl ChunkType {
-    fn bytes(&self) -> [u8; 4] {
-        self.chunk_name
-    }
-
-    fn is_valid(&self) -> bool {
-        self.is_reserved_bit_valid() && self.chunk_name[0].is_ascii() &&
-                                        self.chunk_name[1].is_ascii() &&
-                                        self.chunk_name[1].is_ascii() &&
-                                        self.chunk_name[3].is_ascii()
-    }
-
-    fn is_critical(&self) -> bool {
-        // chunks that are not strictly necessary to the display the content of the file
-        // is a "ancillary" chunk
-        // chunks that are necessary to the display the contents of the file is a "critical" chunk
-        self.chunk_name[0].is_ascii_uppercase()
-    }
-
-    fn is_public(&self) -> bool {
-        // public chunk is one that is part of the PNG specification
-        // private chunk is our own defined chunk for our own purpose
-        self.chunk_name[1].is_ascii_uppercase()
-    }
-
-    fn is_reserved_bit_valid(&self) -> bool {
-        // must be 0 in files conforming to the 1.2 version of the PNG spec
-        self.chunk_name[2].is_ascii_uppercase()
-    }
-
-    fn is_safe_to_copy(&self) -> bool {
-        // if chunk's safe-to-copy bit is 1, chunk may be copied to a modifed PNG file
-        // if chunk's safe-to-copy bit is 0, the chunk depend on the image data
-        self.chunk_name[3].is_ascii_lowercase()
-    }
-}
-
 
 #[cfg(test)]
 mod tests {
