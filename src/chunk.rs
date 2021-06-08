@@ -9,32 +9,20 @@ use crate::{Error, Result};
 
 #[derive(Debug)]
 pub struct Chunk {
-    // number of bytes in the chunk's data
-    // can be any length, up to 4 bytes
-    length: u32,
-    typee: ChunkType,
-    data: Vec<u8>,
-    // CRC calculated on preeceding bytes in the chunk (chunk type and data)
-    // this is always present even if there is no data.
-    // used to verify each chunk for corrupted data
-    crc: u32,
+    pub typee: ChunkType,
+    pub data: Vec<u8>,
 }
 
 impl Chunk {
-    fn new(length: u32, typee: ChunkType, data: Vec<u8>, crc: u32) -> Self {
-        Self {
-            length,
-            typee,
-            data,
-            crc,
-        }
+    pub fn new(typee: ChunkType, data: Vec<u8>) -> Self {
+        Self { typee, data }
     }
 
     fn length(&self) -> u32 {
-        self.length
+        self.data.len() as u32
     }
 
-    fn chunk_type(&self) -> &ChunkType {
+    pub fn chunk_type(&self) -> &ChunkType {
         &self.typee
     }
 
@@ -42,8 +30,11 @@ impl Chunk {
         self.data.as_ref()
     }
 
+    // CRC calculated on preeceding bytes in the chunk (chunk type and data)
+    // this is always present even if there is no data.
+    // used to verify each chunk for corrupted data
     pub fn crc(&self) -> u32 {
-        self.crc
+        crc32::checksum_ieee(&[&self.typee.name, self.data.as_slice()].concat())
     }
 
     pub fn data_as_string(&self) -> Result<String> {
@@ -54,7 +45,7 @@ impl Chunk {
         }
     }
 
-    fn as_bytes(&self) -> Vec<u8> {
+    pub fn as_bytes(&self) -> Vec<u8> {
         self.length()
             .to_be_bytes()
             .iter()
@@ -88,8 +79,10 @@ impl TryFrom<&[u8]> for Chunk {
         reader.read_exact(&mut buffer)?;
         let received_crc = u32::from_be_bytes(buffer);
 
-        let crc = crc32::checksum_ieee(&[&chunk_type.name, chunk_data.as_slice()].concat());
-        let chunk = Chunk::new(data_length, chunk_type, chunk_data, crc);
+        let chunk = Chunk {
+            typee: chunk_type,
+            data: chunk_data,
+        };
 
         if chunk.crc() == received_crc {
             Ok(chunk)
