@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::usize;
 
-use crate::Chunk;
+use crate::chunk::Chunk;
 use crate::{Error, Result};
 
 #[derive(Debug)]
@@ -20,12 +20,12 @@ impl Png {
         Self { chunks }
     }
 
-    fn append_chunk(&mut self, chunk: Chunk) {
+    pub fn append_chunk(&mut self, chunk: Chunk) {
         self.chunks.push(chunk);
     }
 
     // remove first occurence of 'chunk_type'
-    fn remove_chunk(&mut self, chunk_type: &str) -> Result<Chunk> {
+    pub fn remove_chunk(&mut self, chunk_type: &str) -> Result<Chunk> {
         if let Some(index) = self
             .chunks
             .iter()
@@ -41,12 +41,12 @@ impl Png {
         &Png::STANDARD_HEADER
     }
 
-    fn chunks(&self) -> &[Chunk] {
+    pub fn chunks(&self) -> &[Chunk] {
         &self.chunks
     }
 
     // get first occurence of 'chunk_type'
-    fn chunk_by_type(&self, chunk_type: &str) -> Option<&Chunk> {
+    pub fn chunk_by_type(&self, chunk_type: &str) -> Option<&Chunk> {
         if let Some(typee) = self
             .chunks
             .iter()
@@ -58,7 +58,7 @@ impl Png {
         }
     }
 
-    fn as_bytes(&self) -> Vec<u8> {
+    pub fn as_bytes(&self) -> Vec<u8> {
         [
             self.header().to_vec(),
             self.chunks
@@ -84,7 +84,6 @@ impl TryFrom<&[u8]> for Png {
         while bytes_cursor < bytes.len() {
             let chunk = Chunk::try_from(&bytes[bytes_cursor..])?;
             bytes_cursor += chunk.as_bytes().len();
-            println!("{}", bytes_cursor);
             data_chunks.push(chunk);
         }
 

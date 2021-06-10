@@ -5,3 +5,5 @@ Inspired by this [article](https://picklenerd.github.io/pngme_book/introduction.
 
 Built using:  
 * [Rust](https://www.rust-lang.org)
+* [clap](https://crates.io/crates/clap)
+* [crc](https://crates.io/crates/crc)

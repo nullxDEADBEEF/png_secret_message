@@ -14,10 +14,6 @@ pub struct ChunkType {
 }
 
 impl ChunkType {
-    fn new(name: [u8; 4]) -> Self {
-        Self { name }
-    }
-
     fn bytes(&self) -> [u8; 4] {
         self.name
     }
@@ -59,14 +55,7 @@ impl TryFrom<[u8; 4]> for ChunkType {
     type Error = &'static str;
 
     fn try_from(value: [u8; 4]) -> Result<Self, Self::Error> {
-        let mut chunk_type = ChunkType { name: [0; 4] };
-
-        for (index, v) in value.iter().enumerate() {
-            if v.is_ascii() {
-                chunk_type.name[index] = *v;
-            }
-        }
-
+        let chunk_type = ChunkType { name: value };
         Ok(chunk_type)
     }
 }
@@ -76,24 +65,24 @@ impl str::FromStr for ChunkType {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut chunk_type = ChunkType::new([0; 4]);
+        let mut type_name: [u8; 4] = [0; 4];
 
         for (index, character) in s.chars().enumerate() {
             if character.is_ascii_lowercase() || character.is_ascii_uppercase() {
-                chunk_type.name[index] = character as u8;
+                type_name[index] = character as u8;
             } else {
                 return Err("Could not parse");
             }
         }
 
-        Ok(chunk_type)
+        Ok(ChunkType::try_from(type_name))?
     }
 }
 
 // Display formats value using a given formatter
 impl fmt::Display for ChunkType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", std::str::from_utf8(&self.name).unwrap())
+        write!(f, "{}", std::str::from_utf8(&self.bytes()).unwrap_or("Could not print chunk type"))
     }
 }
 
